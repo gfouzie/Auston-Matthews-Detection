@@ -7,7 +7,20 @@ import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import requests
 
+def download_image(url, folder_name, num):
+    #write image to file
+    response = requests.get(url)
+    print(response.status_code)
+    if response.status_code == 200:
+        with open(os.path.join(folder_name,str(num)+".jpg"),'wb') as file:
+            file.write(response.content)
+
+#creating a directory to save images
+folder_name = input("What would you like the image folder to be named: ")
+if not os.path.isdir(folder_name):
+    os.makedirs(folder_name)
 
 s=Service('/Users/gregfouzie/Desktop/Codermans/Drivers/chromedriver')
 driver = webdriver.Chrome(service=s)
@@ -27,9 +40,6 @@ print(searchWordsString)
 
 search_URL = "https://www.google.com/search?q="+searchWordsString+"&rlz=1C5CHFA_enCA952CA952&source=lnms&tbm=isch&sa=X&ved=2ahUKEwjk1rGU-4z0AhWuQzABHVApBSMQ_AUoAnoECAEQBA&biw=1200&bih=899&dpr=2"
 driver.get(search_URL)
-
-
-
 
 page_scroll_sleep = 2
 
@@ -73,7 +83,39 @@ for i in range(1, len_containers+1):
     xPath = """//*[@id="islrg"]/div[1]/div[%s]"""%(i)
     element = driver.find_element(By.XPATH, xPath)
     if element.get_attribute("class") == "isv-r PNCib MSM1fd BUooTd":
-        element.click()
+        previewImageXPath = """//*[@id="islrg"]/div[1]/div[%s]/a[1]/div[1]/img"""%(i)
+        previewImageElement = driver.find_element(By.XPATH, previewImageXPath)
+        previewImageURL = previewImageElement.get_attribute("src")
+
+        driver.find_element(By.XPATH, xPath).click()
+
+
+    #It's all about the wait
+    timeStarted = time.time()
+    while True:
+        imageElement = driver.find_element(By.XPATH, """//*[@id="Sva75c"]/div/div/div[3]/div[2]/c-wiz/div/div[1]/div[1]/div[2]/div[1]/a/img""")
+        imageURL= imageElement.get_attribute('src')
+
+        if imageURL != previewImageURL:
+            #print("actual URL", imageURL)
+            break
+
+        else:
+            #making a timeout if the full res image can't be loaded
+            currentTime = time.time()
+
+            if currentTime - timeStarted > 10:
+                print("Timeout! Will download a lower resolution image and move onto the next one")
+                break
+
+
+    #Downloading image
+    try:
+        download_image(imageURL, folder_name, i)
+        print("Downloaded element %s out of %s total. URL: %s" % (i, len_containers + 1, imageURL))
+    except:
+        print("Couldn't download an image %s, continuing downloading the next one"%(i))
+
 
 while(True):
     pass
